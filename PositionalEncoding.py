@@ -1,16 +1,14 @@
 #positional encoding formula
 import torch
-import math
-import matplotlib.pyplot as plt
-import numpy as np
-import torch.nn as nn
-
+from torch import nn
 #PE(pos,2i) = sin(pos/10000**(2i/dmodel))
 #PE(pos,2i+1) = cos(pos/10000**(2i/dmodel))
 
 #these positional encodings are added to the input embeddings but are not learnable
 
 class PositionalEncodings(nn.Module):
+    """Positional encodings that is added to the initial encodings
+        and passed the the encoder/decoder."""
     def __init__(self,model_dim,max_sequence_length=5000):
         super().__init__()
         self.max_sec_len = max_sequence_length
@@ -34,6 +32,8 @@ class PositionalEncodings(nn.Module):
     
 
     def forward(self,input_embeddings):
+        """Gets the embeddings for the given sequence based on the 
+            given length of the sequence."""
         #getting the amount of rows from out positional encoding we need.
         rows_needed = input_embeddings.shape[1]
         #extracting them from our main positional encodings.
