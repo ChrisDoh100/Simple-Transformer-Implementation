@@ -10,7 +10,8 @@ from Preprocessing import gettokens,numericalise_tokens_wrapper,tokenizer,vocab_
 
 torch.cuda.empty_cache()
 
-sourcedata,targetdata = get_data('englishtrain.txt','frenchtrain.txt',config)
+sourcedata,targetdata = get_data('englishtrain.txt','frenchtrain.txt',valid=False)
+validsource,validtarget = get_data('englishval.txt','frenchval.txt',valid=True)
 
 
 try:
@@ -32,8 +33,15 @@ trg_converter = numericalise_tokens_wrapper(config,trg_vocab=trg_vocab,source=Fa
 
 #convert our source data to tensors, throw them into a dataset and dataloader.
 sourcedata,targetdata = tensorising(sourcedata,targetdata,src_tokenzier,trg_tokenizer,src_converter,trg_converter)
+validsource,validtarget = tensorising(validsource,validtarget,src_tokenzier,trg_tokenizer,src_converter,trg_converter)
+
+#Getting datasets
 translatedatasets= TranslateDataset(firstlang=sourcedata,secondlang=targetdata)
-dataloaded = DataLoader(dataset=translatedatasets,batch_size=config['batch_size'],drop_last=True)
+validationdataset = TranslateDataset(firstlang=validsource,secondlang=validtarget)
+
+#Creating 
+traindataloader = DataLoader(dataset=translatedatasets,batch_size=config['batch_size'],drop_last=True)
+validationdataloader = DataLoader(dataset=validationdataset,batch_size=config['batch_size'],drop_last=True)
 
 #setup our optimizer and loss function, and dont spend a few hours wondering why it wont train with a 1e-2 learning rate
 #and instead keep it below/around 1e-4/5
@@ -42,17 +50,20 @@ loss = torch.nn.CrossEntropyLoss(reduction='mean',ignore_index=src_vocab[config[
 
 for epoch in range(config['epochs']):
     total_loss =0
+    validation_loss=0
     batches=0
+    validation_batches=0
     print(f'Processing epoch {epoch}....')
-    for num_batch,batch in enumerate(dataloaded):
+    for num_batch,batch in enumerate(traindataloader):
         transformer.train()
         batches+=1
         #Generate the masks for that particular batch
-        eng_mask,fr_attn_msk,fr_pad_mask = get_masks(batch[0],batch[1])
-        eng_mask = eng_mask[:,None,:,:]
-        fr_attn_msk = fr_attn_msk[:,None,:,:]
-        fr_pad_mask = fr_pad_mask[:,None,:,:]
-        results = transformer(batch[0].to('cuda'),batch[1].to('cuda'),eng_mask.to('cuda'),fr_attn_msk.to('cuda'),fr_pad_mask.to('cuda'))
+        src_mask,trg_attn_msk,trg_pad_mask = get_masks(batch[0],batch[1])
+        #unsqueezing so that the masks can be broadcast over all the heads.
+        src_mask.unsqueeze_(1)
+        trg_attn_msk.unsqueeze_(1)
+        trg_pad_mask.unsqueeze_(1)
+        results = transformer(batch[0].to('cuda'),batch[1].to('cuda'),src_mask.to('cuda'),trg_attn_msk.to('cuda'),trg_pad_mask.to('cuda'))
         results = results.view(-1,config['max_tokens'])
         batch[1] = batch[1].view(-1).to('cuda')
         cur_loss = loss(results.view(-1,len(trg_vocab)),batch[1])
@@ -60,6 +71,20 @@ for epoch in range(config['epochs']):
         cur_loss.backward()
         adam.step()
         adam.zero_grad()
-    print(f'Finished {epoch} Epoch with: {total_loss/batches} average loss')
+    with torch.no_grad():
+        for val_batches,val_batch in enumerate(validationdataloader):
+            transformer.eval()
+            validation_batches+=1
+            val_src_mask,val_trg_attn_msk,val_trg_pad_msk = get_masks(val_batch[0].to('cuda'),val_batch[1].to('cuda'))
+            val_src_mask.unsqueeze_(1)
+            val_trg_attn_msk.unsqueeze_(1)
+            val_trg_pad_msk.unsqueeze_(1)
+            val_result = transformer(val_batch[0].to('cuda'),val_batch[1].to('cuda'),val_src_mask.to('cuda'),val_trg_attn_msk.to('cuda'),val_trg_pad_msk.to('cuda'))
+            val_result = val_result.view(-1,config['max_tokens'])
+            val_batch[1] = val_batch[1].view(-1).to('cuda')
+            val_loss = loss(results,val_batch[1])
+            validation_loss+=val_loss
+
+    print(f'Finished {epoch} Epoch with: {total_loss/batches} average loss with {validation_loss/validation_batches} validation loss.')
 
 
