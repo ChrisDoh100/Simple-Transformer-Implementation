@@ -13,7 +13,7 @@ class PositionalEncodings(nn.Module):
         super().__init__()
         self.max_sec_len = max_sequence_length
         self.model_dimension=model_dim
-        
+        self.dropout = nn.Dropout(p=0.1)
         #math for encodings
         positions = torch.arange(0,max_sequence_length).unsqueeze(1)
         freq = torch.pow(10000.,-torch.arange(0,self.model_dimension,2)/self.model_dimension)
@@ -39,5 +39,5 @@ class PositionalEncodings(nn.Module):
         #extracting them from our main positional encodings.
         pos_embed_porition = self.pos_embed[:rows_needed]
         
-        return (input_embeddings+pos_embed_porition)
+        return self.dropout(input_embeddings+pos_embed_porition)
 

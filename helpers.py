@@ -16,3 +16,6 @@ def get_data(basetxtfile, transtxtfile,valid=False):
         firstland = firstland[:config['sentence_amount']]
         secondland = secondland[:config['sentence_amount']]
     return firstland,secondland
+
+def num_params(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

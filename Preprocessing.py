@@ -19,34 +19,40 @@ def filterlength(first_lang,second_land):
     return [filter(lambda x :(len(x[0])<config['max_length'] and len(x[1])<config['max_length']),zip(first_lang,second_land))]
 
 
-def tokenizer(kwargs,source = True):
+def tokenizer(source = True):
     """Wrapper that generates tokenized versions of a given sentence.
         Different from the getTokens function as that returns the full corpus tokenized."""
     def tokenize_example(example):
         if source:
-            tokens = [token.text for token in kwargs['entokener'].tokenizer(example)][:kwargs['max_length']]
+            tokens = [token.text for token in config['entokener'].tokenizer(example)][:config['max_length']]
         else:
-            tokens = [token.text for token in kwargs['frtokener'].tokenizer(example)][:kwargs['max_length']]
-        if kwargs['lower_case']:
+            tokens = [token.text for token in config['frtokener'].tokenizer(example)][:config['max_length']]
+        if config['lower_case']:
             tokens = [token.lower() for token in tokens]
-        tokens = [kwargs['sos_token']] + tokens + [kwargs['eos_token']]
+        if config['eval']:
+            if source:
+                print("TOKENS: ",tokens)
+                tokens = [config['sos_token']] + tokens + [config['eos_token']]
+            else:
+                print("TOKENS2: ",tokens)
+                tokens = [config['sos_token']] + tokens
         return tokens
     return tokenize_example
 
 
-def vocab_builder(data,kwargs,set_default=False):
+def vocab_builder(data,config,set_default=False):
     """Builds the vocab, based on the corpus of text used,
         with optional choice to set the default token."""
-    built_vocab = vocab.build_vocab_from_iterator(data,min_freq=kwargs['min_word_freq'],specials=special_tokens1,max_tokens=kwargs['max_tokens'])
+    built_vocab = vocab.build_vocab_from_iterator(data,min_freq=config['min_word_freq'],specials=special_tokens1,max_tokens=config['max_tokens'])
     if set_default:
-        built_vocab.set_default_index(built_vocab[kwargs['unk_token']])
+        built_vocab.set_default_index(built_vocab[config['unk_token']])
     return built_vocab
 
 
-def numericalise_tokens_wrapper(kwargs,src_vocab = None,trg_vocab=None,source=True):
+def numericalise_tokens_wrapper(src_vocab = None,trg_vocab=None,source=True):
     """Converts the given tokenized versions of sentences into numberical values that can be passed to the transformer."""
-    max_len = kwargs['max_length']
-    pad_token = kwargs['pad_token']
+    max_len = config['max_length']
+    pad_token = config['pad_token']
     def numericalize_tokens(example):
         while len(example)<max_len:
             example.append(pad_token)
@@ -102,11 +108,15 @@ def get_masks(src_batch,trg_batch):
 def tensorising(sourcelang,targetlang,src_tokenizer,trg_tokenizer,src_converter,trg_converter):
     sourcedata =list(map(src_tokenizer,sourcelang))
     targetdata= list(map(trg_tokenizer,targetlang))
+    print(sourcedata,targetdata)
     filtereddata= list(filter(lambda x : (len(x[0])<config['max_length']and len(x[1])<config['max_length']),zip(sourcedata,targetdata)))
+
     sourcedata = [src[0] for src in filtereddata]
     targetdata = [trg[1] for trg in filtereddata]
+
     sourcedata = list(map(src_converter,sourcedata))
     targetdata= list(map(trg_converter,targetdata))
+
     sourcedata = torch.tensor(sourcedata)
     targetdata = torch.tensor(targetdata)
     return targetdata,targetdata
