@@ -1,122 +1,47 @@
 import torch
-from Config import config,special_tokens1
-from torchtext import vocab
+from Config import config
+from torch.nn.utils.rnn import pad_sequence
+import sentencepiece as spm
+import torch.nn as nn
 
 
+sp = spm.SentencePieceProcessor()
+sp.Load('training.model')
 
-def gettokens(data_iter,source=True):
-    """Returns tokenized versions of a single corpus."""
-    if source:
-        for sentence in data_iter:
-            yield [token.text for token in config['entokener'].tokenizer(sentence)]
-    else:
-        for sentence in data_iter:
-            yield [token.text for token in config['frtokener'].tokenizer(sentence)]
+def get_source_mask(src_seqs,pad_token):
+    src_mask = (src_seqs != pad_token).unsqueeze(1).unsqueeze(2)
+    return src_mask
 
-def filterlength(first_lang,second_land):
-    """Returns a process tuple of both source and target sentences, where
-        none are greater than the configured number of tokens."""
-    return [filter(lambda x :(len(x[0])<config['max_length'] and len(x[1])<config['max_length']),zip(first_lang,second_land))]
+def get_trg_mask(trg_seqs, pad_token_id):
 
+    batch_size = trg_seqs.shape[0]
+    sequence_length = trg_seqs.shape[1]
+    trg_padding_mask = (trg_seqs != pad_token_id).view(batch_size,1,1,-1).to('cuda')
+    trg_no_look_forward_mask = torch.triu(torch.ones((batch_size,1,sequence_length, sequence_length)) == 1).transpose(2, 3).to('cuda')
+    trg_mask = trg_padding_mask & trg_no_look_forward_mask
 
-def tokenizer(source = True):
-    """Wrapper that generates tokenized versions of a given sentence.
-        Different from the getTokens function as that returns the full corpus tokenized."""
-    def tokenize_example(example):
-        if source:
-            tokens = [token.text for token in config['entokener'].tokenizer(example)][:config['max_length']]
-        else:
-            tokens = [token.text for token in config['frtokener'].tokenizer(example)][:config['max_length']]
-        if config['lower_case']:
-            tokens = [token.lower() for token in tokens]
-        if config['eval']:
-            if source:
-                print("TOKENS: ",tokens)
-                tokens = [config['sos_token']] + tokens + [config['eos_token']]
-            else:
-                print("TOKENS2: ",tokens)
-                tokens = [config['sos_token']] + tokens
-        return tokens
-    return tokenize_example
+    return trg_mask
 
+def collate_fn(batch):
+    # Sort batch by sequence length (descending order)
+    # Separate the batch into input sequences, target sequences, and additional features
+    (actual_input_sequences,decoder_input_sequences,decoder_output_sequences) = zip(*batch)
+    # Pad sequences to the maximum length in the batch
+    padded_input_sequences = pad_sequence(actual_input_sequences, batch_first=True, padding_value=sp.pad_id())
+    padded_decoder_input_sequences = pad_sequence(decoder_input_sequences, batch_first=True, padding_value=sp.pad_id())
+    padded_decoder_output_sequences = pad_sequence(decoder_output_sequences, batch_first=True, padding_value=sp.pad_id())
 
-def vocab_builder(data,config,set_default=False):
-    """Builds the vocab, based on the corpus of text used,
-        with optional choice to set the default token."""
-    built_vocab = vocab.build_vocab_from_iterator(data,min_freq=config['min_word_freq'],specials=special_tokens1,max_tokens=config['max_tokens'])
-    if set_default:
-        built_vocab.set_default_index(built_vocab[config['unk_token']])
-    return built_vocab
+    max_padding_needed = max(padded_input_sequences.size(1),padded_decoder_input_sequences.size(1),padded_decoder_output_sequences.size(1))
+
+    padded_input_sequences = nn.functional.pad(padded_input_sequences, (0, max_padding_needed - padded_input_sequences.size(1)), value=sp.pad_id())
+    padded_decoder_input_sequences = nn.functional.pad(padded_decoder_input_sequences, (0, max_padding_needed - padded_decoder_input_sequences.size(1)), value=sp.pad_id())
+    padded_decoder_output_sequences = nn.functional.pad(padded_decoder_output_sequences, (0, max_padding_needed - padded_decoder_output_sequences.size(1)), value=sp.pad_id())
+    
+    # Generate padding masks
+    src_mask = get_source_mask(padded_input_sequences,sp.pad_id())
+    trg_mask =get_trg_mask(padded_decoder_input_sequences,sp.pad_id())
+    return (padded_input_sequences.to('cuda'), src_mask.to('cuda')), \
+           (padded_decoder_input_sequences.to('cuda'),trg_mask.to('cuda')), \
+           (padded_decoder_output_sequences.view(-1,1).to('cuda'))
 
 
-def numericalise_tokens_wrapper(src_vocab = None,trg_vocab=None,source=True):
-    """Converts the given tokenized versions of sentences into numberical values that can be passed to the transformer."""
-    max_len = config['max_length']
-    pad_token = config['pad_token']
-    def numericalize_tokens(example):
-        while len(example)<max_len:
-            example.append(pad_token)
-
-        if source:
-            ids = src_vocab.lookup_indices(example)
-        else:
-            ids = trg_vocab.lookup_indices(example)
-        return ids
-    return numericalize_tokens
-
-
-def get_masks(src_batch,trg_batch):
-    """Generates the encoder padding mask, the decoder padding mask,
-        and the decoder attention mask for any given batch."""
-    max_seq_length = config['max_length']
-    basic_attention_mask = torch.full([config['batch_size'],max_seq_length,max_seq_length],True)
-    basic_attention_mask.triu_(diagonal=1)
-    src_padding_mask = torch.full([config['batch_size'],max_seq_length,max_seq_length],False)
-    trg_padding_mask = torch.full([config['batch_size'],max_seq_length,max_seq_length],False)
-    trg_attention_mask = torch.full([config['batch_size'],max_seq_length,max_seq_length],False)
-
-    for idx in range(config['batch_size']):
-        src_len = 0
-        trg_len = 0
-        #2 is the padding index
-        for i in range(len(src_batch[idx])):
-            if src_batch[idx][i]!=2:
-                src_len=i
-        for i in range(len(trg_batch[idx])):
-            if trg_batch[idx][i]!=2:
-                trg_len=i
-        src_padding_rows_columns = torch.arange(src_len+1,max_seq_length)
-        trg_padding_rows_columns = torch.arange(trg_len+1,max_seq_length)
-
-        #For padding tokens that are not included in the original sentence
-        src_padding_mask[idx,src_padding_rows_columns,:] = True
-        src_padding_mask[idx,:,src_padding_rows_columns]=True
-        trg_padding_mask[idx,:,trg_padding_rows_columns]=True
-        trg_padding_mask[idx,trg_padding_rows_columns,:]=True
-
-        #Masking for the second MHA block in the decoder, between
-        #engligh output of encoder and french input
-        trg_attention_mask[idx,:,src_padding_rows_columns]=True
-        trg_attention_mask[idx,trg_padding_rows_columns,:]=True
-
-    src_padding_mask = torch.where(src_padding_mask,-1e9,0.)
-    trg_masked_attention_padding_mask = torch.where(basic_attention_mask+trg_padding_mask,-1e9,0.)
-    both_attention_mask = torch.where(trg_attention_mask,-1e9,0.)
-
-    return src_padding_mask,trg_masked_attention_padding_mask,both_attention_mask
-
-def tensorising(sourcelang,targetlang,src_tokenizer,trg_tokenizer,src_converter,trg_converter):
-    sourcedata =list(map(src_tokenizer,sourcelang))
-    targetdata= list(map(trg_tokenizer,targetlang))
-    print(sourcedata,targetdata)
-    filtereddata= list(filter(lambda x : (len(x[0])<config['max_length']and len(x[1])<config['max_length']),zip(sourcedata,targetdata)))
-
-    sourcedata = [src[0] for src in filtereddata]
-    targetdata = [trg[1] for trg in filtereddata]
-
-    sourcedata = list(map(src_converter,sourcedata))
-    targetdata= list(map(trg_converter,targetdata))
-
-    sourcedata = torch.tensor(sourcedata)
-    targetdata = torch.tensor(targetdata)
-    return targetdata,targetdata

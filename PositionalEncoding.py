@@ -9,14 +9,14 @@ from torch import nn
 class PositionalEncodings(nn.Module):
     """Positional encodings that is added to the initial encodings
         and passed the the encoder/decoder."""
-    def __init__(self,model_dim,max_sequence_length=5000):
+    def __init__(self,model_dim=512,sequence_length=5000):
         super().__init__()
-        self.max_sec_len = max_sequence_length
+        self.max_sec_len = sequence_length
         self.model_dimension=model_dim
-        self.dropout = nn.Dropout(p=0.1)
+        self.dropout = nn.Dropout(p=0.0)
         #math for encodings
-        positions = torch.arange(0,max_sequence_length).unsqueeze(1)
-        freq = torch.pow(10000.,-torch.arange(0,self.model_dimension,2)/self.model_dimension)
+        positions = torch.arange(0,self.max_sec_len).unsqueeze(1)
+        freq = torch.pow(10000.,-torch.arange(0,self.model_dimension,2,dtype=torch.float)/self.model_dimension)
 
         #creating positional encodings table
         pos_embed = torch.zeros(self.max_sec_len,self.model_dimension)
@@ -35,9 +35,7 @@ class PositionalEncodings(nn.Module):
         """Gets the embeddings for the given sequence based on the 
             given length of the sequence."""
         #getting the amount of rows from out positional encoding we need.
-        rows_needed = input_embeddings.shape[1]
         #extracting them from our main positional encodings.
-        pos_embed_porition = self.pos_embed[:rows_needed]
+        pos_embed_porition = self.pos_embed[:input_embeddings.shape[1]]
         
         return self.dropout(input_embeddings+pos_embed_porition)
-

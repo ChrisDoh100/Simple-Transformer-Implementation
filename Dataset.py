@@ -1,17 +1,20 @@
 
 from torch.utils.data import Dataset
+import torch
 
 
 
 
 class TranslateDataset(Dataset):
-    """Converts two different set sof sentences into a huggingface face dataset."""
-    def __init__(self,firstlang,secondlang):
-        self.firstlang = firstlang
-        self.secondlang = secondlang
+    """Converts Source sentences, target sentences(split into decoder inputs and outputs) into tensors."""
     
+    def __init__(self,sourceinput,targetinput,groundtruth):
+        self.sourceinput = [torch.tensor(i) for i in sourceinput]
+        self.targetinput = [torch.tensor(i) for i in targetinput]
+        self.groundtruth = [torch.tensor(i) for i in groundtruth]
+        
     def __len__(self):
-        return len(self.firstlang)
+        return len(self.sourceinput)
     
     def __getitem__(self,idx):
-        return self.firstlang[idx],self.secondlang[idx]
+        return self.sourceinput[idx],self.targetinput[idx],self.groundtruth[idx]

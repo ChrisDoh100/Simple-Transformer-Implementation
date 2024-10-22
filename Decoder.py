@@ -1,5 +1,6 @@
 #decoder layer
 #general decoder = n*decoder layer
+import torch
 from torch import nn
 from helpers import clones
 from MultiHeadAttn import MultiHeadAttention
@@ -10,32 +11,52 @@ class Decoder(nn.Module):
 
     def __init__(self,layers,decoderlayer):
         super().__init__()
-        self.layers=layers
-        self.decoder = decoderlayer
-        self.decoderlayers = clones(self.decoder,self.layers)
+        self.decoderlayers = clones(decoderlayer,layers)
+        self.norm = nn.LayerNorm(decoderlayer.dmodel)
 
-    def forward(self,encoder_outputs,x,fr_att_mask,fr_pad_msk):
+    def forward(self,x,encoder_outputs,trg_mask,src_mask):
+        trg_tokens=x
         for decodinglayer in self.decoderlayers:
-            x = decodinglayer(x,encoder_outputs,fr_att_mask,fr_pad_msk)
-        return x
+            trg_tokens = decodinglayer(trg_tokens,encoder_outputs,trg_mask,src_mask)
+        return self.norm(trg_tokens)
     
 
 class LayerDecoder(nn.Module):
-    def __init__(self,heads,dmodel):
-        super().__init__()
-        self.heads=heads
-        self.dmodel=dmodel
-        self.lin2 = nn.Linear(self.dmodel,3*self.dmodel)
-        self.mham = MultiHeadAttention(dmodel=self.dmodel,heads=self.heads)
+    def __init__(self, heads, dmodel):
+        super(LayerDecoder,self).__init__()
+        self.heads = heads
+        self.dmodel = dmodel
+        
+        # Linear layers for transforming inputs and encoder output
+        
+        # Multi-head attention layers for self-attention and encoder-decoder attention
+        self.mham = MultiHeadAttention(dmodel=self.dmodel, heads=self.heads)  # Masked self-attention
+        self.mha = MultiHeadAttention(dmodel=self.dmodel, heads=self.heads)   # Encoder-decoder attention
+        
+        # Separate LayerNorm instances for each attention and feed-forward submodule
+        self.norm1 = nn.LayerNorm(self.dmodel)  # For masked self-attention
+        self.norm2 = nn.LayerNorm(self.dmodel)  # For encoder-decoder attention
+        self.norm3 = nn.LayerNorm(self.dmodel)  # For feed-forward layer
         self.norm = nn.LayerNorm(self.dmodel)
-        self.ff = FeedForwardLayer(2048,self.dmodel)
-        self.lin = nn.Linear(self.dmodel,2*self.dmodel)
-        self.mha = MultiHeadAttention(dmodel=self.dmodel,heads=self.heads)
+        self.norm4 = nn.LayerNorm(self.dmodel)
+        
+        # Feed-forward network
+        self.ff = FeedForwardLayer(2048, self.dmodel)
+        
+        # Dropout for regularization
+        self.dropout = nn.Dropout(p=0.1)
+        self.dropout1= nn.Dropout(p=0.1)
+        self.dropout2 = nn.Dropout(p=0.1)
 
-    def forward(self,x,encoder_output,fr_attn_mask,fr_padding_msk):
-        k_matrix,v_matrix = self.lin(encoder_output).chunk(2,-1)
-        masked_attention =self.norm(x+self.mham(x,k_matrix,v_matrix,fr_attn_mask))
-        newq_matrix,newk_matrix,newv_matrix = self.lin2(masked_attention).chunk(3,-1)
-        unmasked_attention = self.norm(self.mha(newq_matrix,newk_matrix,newv_matrix,fr_padding_msk)+masked_attention)
-        output = self.norm(self.ff(unmasked_attention)+unmasked_attention)
+    def forward(self, trg, encoder_output, trg_mask,src_mask):
+        #Normalizing Inputs, for some reason the model has a hard time learning if you don't normalise the initial inputs.
+        trb = self.norm(trg)
+        x = self.mham(query_matrix=trb, key_matrix=trb, value_matrix=trb, mask=trg_mask)
+        #Decoder Block 1
+        unmasked_attention = trg + self.dropout(self.norm1(x))
+        #Decoder Block 2
+        masked_attention = unmasked_attention + self.dropout1(self.mha(query_matrix=self.norm2(unmasked_attention), key_matrix=encoder_output, value_matrix=encoder_output, mask=src_mask))
+        #Decoder Block 3
+        output = masked_attention + self.dropout2(self.ff(self.norm3(masked_attention)))
+
         return output

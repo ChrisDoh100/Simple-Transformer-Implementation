@@ -1,36 +1,48 @@
 
-import torchtext
-from Config import config
+import torch
+import torch.utils
+import torch.utils.data
+from torch.utils.data.sampler import Sampler
+import random
 
-torchtext.disable_torchtext_deprecation_warning()
+class tokenBatchSampler(Sampler):
+    """Sampling batches from the dataset to ensure roughly similar batch sizes based on token amount."""
 
+    def __init__(self,dataset,max_tokens=1500,shuffle=True):
+        self.dataset=dataset
+        self.max_tokens=max_tokens
+        self.shuffle = shuffle
+        self.batches = self.__createbatches__()
 
-def tokenizer(english = True):
-    """Wrapper that generates tokenized versions of a given text."""
-    def tokenize_example(example):
-            if english:
-                tokens = [token.text for token in config['entokener'].tokenizer(example)][:config['max_length']]
+    def __createbatches__(self):
+        batches=[]
+        current_tokens=0
+        current_batch=[]
+        sorted_indices = sorted(range(len(self.dataset)), key=lambda i: max(len(self.dataset[i][0]), len(self.dataset[i][1])))
+        for y in sorted_indices:
+            current_length=max(len(self.dataset[y][0]),len(self.dataset[y][1]))
+            if (current_length+current_tokens)>self.max_tokens:
+                if current_batch and current_tokens<=self.max_tokens:
+                    batches.append(current_batch)
+                    if current_length<=self.max_tokens:
+                        current_tokens=current_length
+                        current_batch=[y]
+                    else:
+                        current_tokens=0
+                        current_batch=[]
             else:
-                tokens = [token.text for token in config['frtokener'].tokenizer(example)][:config['max_length']]
-            if config['lower_case']:
-                tokens = [token.lower() for token in tokens]
-            tokens = [config['sos_token']] + tokens + [config['eos_token']]
-            return tokens
-    return tokenize_example
+                current_tokens+=current_length
+                current_batch.append(y)
 
-def numericalise_tokens_wrapper(en_vocab = None,fr_vocab=None,english=True):
-    """Converts the given tokenized versions of sentences into numberical values that can be passed to the transformer."""
-    max_len = config['max_length']
-    pad_token = config['pad_token']
-    def numericalize_tokens(example):
-        while len(example)<max_len:
-            example.append(pad_token)
+        if current_batch:
+            batches.append(current_batch)
+        if self.shuffle:
+            for batch in batches:
+                random.shuffle(batch)
+        return batches
 
-        if english:
-            ids = en_vocab.lookup_indices(example)
-        else:
-            ids = fr_vocab.lookup_indices(example)
-        return ids
-    return numericalize_tokens
+    def __iter__(self):
+        return iter(self.batches)
 
-
+    def __len__(self):
+        return len(self.batches)

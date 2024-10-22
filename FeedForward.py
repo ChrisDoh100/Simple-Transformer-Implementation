@@ -3,19 +3,12 @@ from torch import nn
 
 
 class FeedForwardLayer(nn.Module):
-    """Feedforward layer, that is placed after the multi-head
-        attention layer"""
-    def __init__(self,inter,output):
+    
+    def __init__(self, higher_dim,model_dimension):
         super().__init__()
-        self.output = output
-        self.intermediate = inter
-        self.firstfeedforward = nn.Linear(self.output,self.intermediate)
-        self.secondfeedfoward = nn.Linear(self.intermediate,self.output)
+        self.linear1 = nn.Linear(model_dimension, higher_dim)
+        self.linear2 = nn.Linear(higher_dim, model_dimension)
         self.relu = nn.ReLU()
 
-    def forward(self,x):
-        """Forward pass of feedforward network."""
-        x  = self.firstfeedforward(x)
-        x  = self.relu(x)
-        x  = self.secondfeedfoward(x)
-        return x
+    def forward(self, representations_batch):
+        return self.linear2(self.relu(self.linear1(representations_batch)))
