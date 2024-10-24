@@ -1,6 +1,6 @@
 from Config import config
 
-class Lscheduler:
+class LRscheduler:
     def __init__(self,optimizer,warmups,model_dimension):
         self.model_dim = model_dimension
         self.opt = optimizer
@@ -17,13 +17,8 @@ class Lscheduler:
         self.opt.step()
 
     def get_lr(self):
-        """Gets the current learning rate based on the current step,
-            includes an option to skip warmup if fine-tuning/restarting training
-            from a checkpoint."""
-        if config['warmup']:
-            learning_rate = (self.model_dim**(-0.5))*min((self.current_step**(-0.5)),(self.current_step*(self.warmup**(-1.5))))
-        else:
-            learning_rate = ((self.model_dim**(-0.5))*(self.current_step**(-0.5)))
+        """Gets the current learning rate based on the current step."""
+        learning_rate = (self.model_dim**(-0.5))*min((self.current_step**(-0.5)),(self.current_step*(self.warmup**(-1.5))))
         return learning_rate
 
     def zero_grad(self):

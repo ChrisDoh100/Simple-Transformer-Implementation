@@ -13,5 +13,6 @@ config={
     'warmup':True,
     'val_sentence_amount':70000,
     'beam_depth':50,
+    'vocab_size':32000
     }
 

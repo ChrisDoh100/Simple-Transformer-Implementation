@@ -2,8 +2,12 @@ from torch import nn
 import sentencepiece as spm
 import math
 
+
 sp = spm.SentencePieceProcessor()
-sp.Load('training.model')
+try:
+    sp.Load('training.model')
+except:
+    print("w/e")
 
 class Embeddings(nn.Module):
     """Generates the embeddings for each input sentence/matrix"""

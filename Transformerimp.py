@@ -1,16 +1,10 @@
-import torch
-import math
 import torch.nn as nn
-import sentencepiece as spm
-import math
 from Embeddings import Embeddings
 from PositionalEncoding import PositionalEncodings
 from Decoder import LayerDecoder,Decoder
 from Encoder import LayerEncoder,Encoder
 from DecoderOutputGen import DecoderOutputGenerator
 
-sp = spm.SentencePieceProcessor()
-sp.Load('training.model')
 
 class Transformer(nn.Module):
     def __init__(self,config,vocab_size):
@@ -52,5 +46,3 @@ class Transformer(nn.Module):
         decoder_output = self.decoder(trg_encodingpos_embeddings,encoder_output,trg_mask,src_mask)
         answer = self.decodergenerator(decoder_output)
         return answer
-
-

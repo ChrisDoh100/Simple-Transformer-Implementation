@@ -1,12 +1,8 @@
 import torch
-from Config import config
 from torch.nn.utils.rnn import pad_sequence
-import sentencepiece as spm
 import torch.nn as nn
 
 
-sp = spm.SentencePieceProcessor()
-sp.Load('training.model')
 
 def get_source_mask(src_seqs,pad_token):
     src_mask = (src_seqs != pad_token).unsqueeze(1).unsqueeze(2)
@@ -27,19 +23,19 @@ def collate_fn(batch):
     # Separate the batch into input sequences, target sequences, and additional features
     (actual_input_sequences,decoder_input_sequences,decoder_output_sequences) = zip(*batch)
     # Pad sequences to the maximum length in the batch
-    padded_input_sequences = pad_sequence(actual_input_sequences, batch_first=True, padding_value=sp.pad_id())
-    padded_decoder_input_sequences = pad_sequence(decoder_input_sequences, batch_first=True, padding_value=sp.pad_id())
-    padded_decoder_output_sequences = pad_sequence(decoder_output_sequences, batch_first=True, padding_value=sp.pad_id())
+    padded_input_sequences = pad_sequence(actual_input_sequences, batch_first=True, padding_value=3)
+    padded_decoder_input_sequences = pad_sequence(decoder_input_sequences, batch_first=True, padding_value=3)
+    padded_decoder_output_sequences = pad_sequence(decoder_output_sequences, batch_first=True, padding_value=3)
 
     max_padding_needed = max(padded_input_sequences.size(1),padded_decoder_input_sequences.size(1),padded_decoder_output_sequences.size(1))
 
-    padded_input_sequences = nn.functional.pad(padded_input_sequences, (0, max_padding_needed - padded_input_sequences.size(1)), value=sp.pad_id())
-    padded_decoder_input_sequences = nn.functional.pad(padded_decoder_input_sequences, (0, max_padding_needed - padded_decoder_input_sequences.size(1)), value=sp.pad_id())
-    padded_decoder_output_sequences = nn.functional.pad(padded_decoder_output_sequences, (0, max_padding_needed - padded_decoder_output_sequences.size(1)), value=sp.pad_id())
+    padded_input_sequences = nn.functional.pad(padded_input_sequences, (0, max_padding_needed - padded_input_sequences.size(1)), value=3)
+    padded_decoder_input_sequences = nn.functional.pad(padded_decoder_input_sequences, (0, max_padding_needed - padded_decoder_input_sequences.size(1)), value=3)
+    padded_decoder_output_sequences = nn.functional.pad(padded_decoder_output_sequences, (0, max_padding_needed - padded_decoder_output_sequences.size(1)), value=3)
     
     # Generate padding masks
-    src_mask = get_source_mask(padded_input_sequences,sp.pad_id())
-    trg_mask =get_trg_mask(padded_decoder_input_sequences,sp.pad_id())
+    src_mask = get_source_mask(padded_input_sequences,3)
+    trg_mask =get_trg_mask(padded_decoder_input_sequences,3)
     return (padded_input_sequences.to('cuda'), src_mask.to('cuda')), \
            (padded_decoder_input_sequences.to('cuda'),trg_mask.to('cuda')), \
            (padded_decoder_output_sequences.view(-1,1).to('cuda'))

@@ -1,6 +1,7 @@
 from datasets import load_dataset
 import sentencepiece as spm
 import os
+from Dataset import TranslateDataset
 
 
 def load_and_generate_data(dataset_type,source_ext, target_ext):
@@ -20,10 +21,6 @@ def generate_vocab(dataset,source_ext,target_ext):
     """We are going to use sentencepiece, to generate a bpe encoded vocab
         this was surprisingly quick and easy."""
     
-    #First we write our sentences to a text file that sentencepiece will use to 
-    #generate out vocab then we can call a sentencepiece object that will generate
-    #our vocab based on this txt file.
-
     with open(f'{source_ext}{target_ext}train.txt', 'w', encoding='utf-8') as file:
         for x in dataset['train'][:]['translation']:
             file.write(f"{x[f'{target_ext}']}\n{x[f'{source_ext}']}\n")
@@ -56,3 +53,17 @@ def Encoding_Data(data_object,data_type,source_ext,target_ext):
     trg_output = [encoded+[sp.eos_id()] for encoded in target]
 
     return source,trg_input,trg_output
+
+def GenerateDatasets(valset,dataset_type,source_ext,target_ext):
+    data = load_and_generate_data(dataset_type,source_ext,target_ext)
+    generate_vocab(data,source_ext,target_ext)
+    if valset:
+        source,target_inp,target_out = Encoding_Data(data,'train',source_ext,target_ext)
+        val_source,val_target_inp,val_target_out = Encoding_Data(data,'validation',source_ext,target_ext)
+        traindataset = TranslateDataset(source,target_inp,target_out)
+        valdataset = TranslateDataset(val_source,val_target_inp,val_target_out)
+        return traindataset,valdataset
+    
+    source,target_inp,target_out = Encoding_Data(data,'train',source_ext,target_ext)
+    traindataset = TranslateDataset(source,target_inp,target_out)
+    return traindataset
