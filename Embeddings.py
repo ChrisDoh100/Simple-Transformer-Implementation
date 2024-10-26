@@ -3,18 +3,12 @@ import sentencepiece as spm
 import math
 
 
-sp = spm.SentencePieceProcessor()
-try:
-    sp.Load('training.model')
-except:
-    print("w/e")
-
 class Embeddings(nn.Module):
     """Generates the embeddings for each input sentence/matrix"""
     def __init__(self,vocab_size,dim_model):
         super().__init__()
         self.dim_model=dim_model
-        self.embed = nn.Embedding(vocab_size,dim_model,padding_idx=sp.pad_id())
+        self.embed = nn.Embedding(vocab_size,dim_model,padding_idx=3)
 
     def forward(self,tokens):
         """Forward pass for embeddings module, returns a set of embeddings

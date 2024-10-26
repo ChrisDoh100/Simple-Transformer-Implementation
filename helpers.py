@@ -1,6 +1,5 @@
 import copy
 from torch import nn
-from Config import config
 from datasets import load_dataset
 
 
@@ -14,12 +13,6 @@ def get_data(basetxtfile, transtxtfile,valid=False):
 
     firstland = [line.strip('\n')  for line in open(basetxtfile,encoding='utf-8')]
     secondland = [line.strip('\n') for line in open(transtxtfile,encoding='utf-8')]
-    if valid is False:
-        firstland = firstland[:config['sentence_amount']]
-        secondland = secondland[:config['sentence_amount']]
-    else:
-        firstland = firstland[:config['val_sentence_amount']]
-        secondland = secondland[:config['val_sentence_amount']]
     return firstland,secondland
 
 

@@ -17,7 +17,7 @@ def load_and_generate_data(dataset_type,source_ext, target_ext):
 
     return data
 
-def generate_vocab(dataset,source_ext,target_ext):
+def generate_vocab(dataset,source_ext,target_ext,vocab_size):
     """We are going to use sentencepiece, to generate a bpe encoded vocab
         this was surprisingly quick and easy."""
     
@@ -25,15 +25,17 @@ def generate_vocab(dataset,source_ext,target_ext):
         for x in dataset['train'][:]['translation']:
             file.write(f"{x[f'{target_ext}']}\n{x[f'{source_ext}']}\n")
     
+    print("Generating vocab...")
     spm.SentencePieceTrainer.Train(
         input = f'{source_ext}{target_ext}train.txt',
         model_prefix = 'training',
         model_type = 'bpe',
-        vocab_size = 32000,
+        vocab_size = vocab_size,
         pad_id=3,
         shuffle_input_sentence=True,
         bos_id=1,
         eos_id=2,
+        minloglevel=2,
     )
     os.remove(f'{source_ext}{target_ext}train.txt')
 
@@ -54,9 +56,9 @@ def Encoding_Data(data_object,data_type,source_ext,target_ext):
 
     return source,trg_input,trg_output
 
-def GenerateDatasets(valset,dataset_type,source_ext,target_ext):
+def GenerateDatasets(valset,dataset_type,source_ext,target_ext,vocab_size):
     data = load_and_generate_data(dataset_type,source_ext,target_ext)
-    generate_vocab(data,source_ext,target_ext)
+    generate_vocab(data,source_ext,target_ext,vocab_size)
     if valset:
         source,target_inp,target_out = Encoding_Data(data,'train',source_ext,target_ext)
         val_source,val_target_inp,val_target_out = Encoding_Data(data,'validation',source_ext,target_ext)
