@@ -55,8 +55,8 @@ class LayerDecoder(nn.Module):
         #Decoder Block 1
         unmasked_attention = trg + self.dropout(attention)
         #Decoder Block 2
-        normed_attention = self.norm2(unmasked_attention)
-        cross_attention = self.mha(query_matrix=normed_attention, key_matrix=encoder_output, value_matrix=encoder_output, mask=src_mask)
+        normed_unmasked_attention = self.norm2(unmasked_attention)
+        cross_attention = self.mha(query_matrix=normed_unmasked_attention, key_matrix=encoder_output, value_matrix=encoder_output, mask=src_mask)
         masked_attention = unmasked_attention + self.dropout1(cross_attention)
         #Decoder Block 3
         normed_masked_attention = self.norm3(masked_attention)

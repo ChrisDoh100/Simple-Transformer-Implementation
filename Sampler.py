@@ -15,6 +15,7 @@ class tokenBatchSampler(Sampler):
         self.batches = self.__createbatches__()
 
     def __createbatches__(self):
+        """Created batches for the the dataloader, based on token size."""
         batches=[]
         current_tokens=0
         current_batch=[]
@@ -37,6 +38,8 @@ class tokenBatchSampler(Sampler):
         if current_batch:
             batches.append(current_batch)
         if self.shuffle:
+            for batch in self.batches:
+                random.shuffle(batch)
             random.shuffle(batches)
         return batches
 

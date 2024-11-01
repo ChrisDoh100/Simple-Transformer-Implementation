@@ -69,7 +69,6 @@ def beam_search(model,tokenized_sentence,config):
     actual_sentence = tokenized_sentence.to(config['device'])
     candidate_sentences=[(torch.tensor([[sp.bos_id()]]).to(config['device']),1.0)]
     print(candidate_sentences)
-    print("wtf")
     for x in range(len(actual_sentence[0])):
         new_generations=[]
         #print("CANDIATES: ",len(candidate_sentences))

@@ -3,7 +3,7 @@ from torch import nn
 
 
 class FeedForwardLayer(nn.Module):
-    """Feedforward layer of the transformer, allows connections between heads to be produced."""
+    """Feedforward layer of the transformer, allows connections between heads to be realised."""
     def __init__(self, config):
         super().__init__()
         self.dmodel = config['model_dimension']
