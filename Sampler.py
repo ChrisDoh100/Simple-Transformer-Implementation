@@ -37,11 +37,14 @@ class tokenBatchSampler(Sampler):
         if current_batch:
             batches.append(current_batch)
         if self.shuffle:
-            for batch in batches:
-                random.shuffle(batch)
+            random.shuffle(batches)
         return batches
 
     def __iter__(self):
+        if self.shuffle:
+            for batch in self.batches:
+                random.shuffle(batch)
+            random.shuffle(self.batches)
         return iter(self.batches)
 
     def __len__(self):

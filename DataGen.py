@@ -8,11 +8,17 @@ def load_and_generate_data(dataset_type,source_ext, target_ext):
     """Gives a choice between a larger,wmt14 that was in the original paper, 
         or the smaller iswlt dataset which gives quicker results. A full list 
         of available languages should be available on the huggingface dataset 
-        page for each dataset."""
+        page for each dataset.
+        -{https://huggingface.co/datasets/IWSLT/iwslt2017}
+        -{https://huggingface.co/datasets/wmt/wmt14}"""
     
     if dataset_type=='wmt':
-        data = load_dataset("wmt/wmt14",source_ext,target_ext)
+        if source_ext=='en':
+            data = load_dataset("wmt/wmt14",f"{target_ext}-{source_ext}")
+        else:
+            data = load_dataset("wmt/wmt14",f"{source_ext}-{target_ext}")
     else:
+
         data = load_dataset("IWSLT/iwslt2017",f'iwslt2017-{source_ext}-{target_ext}')
 
     return data
@@ -47,10 +53,8 @@ def Encoding_Data(data_object,data_type,source_ext,target_ext):
 
     sp = spm.SentencePieceProcessor()
     sp.Load('training.model')
-
     source = [sp.EncodeAsIds(sentence[f'{source_ext}']) for sentence in data_object[f'{data_type}'][:]['translation']]
     target = [sp.EncodeAsIds(sentence[f'{target_ext}']) for sentence in data_object[f'{data_type}'][:]['translation']]
-    
     trg_input = [[sp.bos_id()]+encoded for encoded in target]
     trg_output = [encoded+[sp.eos_id()] for encoded in target]
 

@@ -3,21 +3,19 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-torch.manual_seed(0)
-torch.set_printoptions(sci_mode=False)
 
 
 class MultiHeadAttention(nn.Module):
     """Computes the Multi Head attention aspect of the Transformer."""
-    def __init__(self,dmodel,heads):
+    def __init__(self,config):
         super().__init__()
-        self.dmodel = dmodel
-        self.heads = heads
-        self.headdim = int(dmodel/heads)
-        self.lin = nn.Linear(self.dmodel,self.dmodel)
-        self.lin1 = nn.Linear(self.dmodel,self.dmodel)
-        self.lin2 = nn.Linear(self.dmodel,self.dmodel)
-        self.lin3=nn.Linear(self.dmodel,self.dmodel)
+        self.dmodel = config['model_dimension']
+        self.heads = config['heads']
+        self.headdim = int(self.dmodel/self.heads)
+        self.query_transform = nn.Linear(self.dmodel,self.dmodel)
+        self.key_transform= nn.Linear(self.dmodel,self.dmodel)
+        self.value_transform = nn.Linear(self.dmodel,self.dmodel)
+        self.output_transform=nn.Linear(self.dmodel,self.dmodel)
         self.softmax = nn.Softmax(dim=-1)
 
     def scaled_dot_product(self,query_matrix,key_matrix,value_matrix,mask=None):
@@ -33,13 +31,13 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self,query_matrix,key_matrix,value_matrix,mask):
         """Forward pass of the Multi-Headed Attention."""
-        query_matrix = self.lin(query_matrix).view(query_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
+        query_matrix = self.query_transform(query_matrix).view(query_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
         
-        key_matrix = self.lin1(key_matrix).view(key_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
+        key_matrix = self.key_transform(key_matrix).view(key_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
 
-        value_matrix = self.lin2(value_matrix).view(value_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
-        x = self.scaled_dot_product(query_matrix,key_matrix,value_matrix,mask=mask)
-        x = x.transpose(1,2)
-        x=x.reshape(x.shape[0],-1,self.dmodel)
-        x = self.lin3(x)
-        return x
+        value_matrix = self.value_transform(value_matrix).view(value_matrix.shape[0],-1,self.heads,self.headdim).transpose(1,2)
+        dot_product_output = self.scaled_dot_product(query_matrix,key_matrix,value_matrix,mask=mask)
+        dot_product_output = dot_product_output.transpose(1,2)
+        dot_product_output=dot_product_output.reshape(dot_product_output.shape[0],-1,self.dmodel)
+        mha_output = self.output_transform(dot_product_output)
+        return mha_output

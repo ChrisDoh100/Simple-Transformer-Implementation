@@ -5,10 +5,10 @@ import math
 
 class Embeddings(nn.Module):
     """Generates the embeddings for each input sentence/matrix"""
-    def __init__(self,vocab_size,dim_model):
+    def __init__(self,config):
         super().__init__()
-        self.dim_model=dim_model
-        self.embed = nn.Embedding(vocab_size,dim_model,padding_idx=3)
+        self.dim_model=config['model_dimension']
+        self.embed = nn.Embedding(config['vocab_size'],config['model_dimension'],padding_idx=3,norm_type=2)
 
     def forward(self,tokens):
         """Forward pass for embeddings module, returns a set of embeddings

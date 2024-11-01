@@ -3,10 +3,9 @@ from torch import nn
 
 class LabelSmoothingDistribution(nn.Module):
     """
-        Instead of one-hot target distribution set the target word's probability to "confidence_value" (usually 0.9)
-        and distribute the rest of the "smoothing_value" mass (usually 0.1) over the rest of the vocab.
-
-        Check out playground.py for visualization of how the smooth target distribution looks like compared to one-hot.
+        Instead of using cross-entropy where we have the target word set to 1 and the rest 0, we set
+        the target embedding/word to a value like 0.9 and the distribute the remaining 0.1 amongst the 
+        rest of the words, this makes the model more unsure and acts as a decent regularisation technique.
     """
 
     def __init__(self, smoothing_value, pad_token_id, trg_vocab_size, device):

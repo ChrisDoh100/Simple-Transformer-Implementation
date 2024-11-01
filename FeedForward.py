@@ -3,11 +3,13 @@ from torch import nn
 
 
 class FeedForwardLayer(nn.Module):
-    
-    def __init__(self, higher_dim,model_dimension):
+    """Feedforward layer of the transformer, allows connections between heads to be produced."""
+    def __init__(self, config):
         super().__init__()
-        self.linear1 = nn.Linear(model_dimension, higher_dim)
-        self.linear2 = nn.Linear(higher_dim, model_dimension)
+        self.dmodel = config['model_dimension']
+        self.ffscale = config['feedforward_scale']
+        self.linear1 = nn.Linear(self.dmodel, self.ffscale*self.dmodel)
+        self.linear2 = nn.Linear(self.ffscale*self.dmodel, self.dmodel)
         self.relu = nn.ReLU()
 
     def forward(self, representations_batch):

@@ -26,34 +26,34 @@ class Encoder(nn.Module):
 class LayerEncoder(nn.Module):
     """This is a single encoder layer.(no shit captain obvious....)"""
 
-    def __init__(self, heads, dmodel):
+    def __init__(self, config):
         super().__init__()
-        self.heads = heads
-        self.dmodel = dmodel
+        self.heads = config['heads']
+        self.dmodel = config['model_dimension']
+        self.dropout_prob = config['dropout_prob']
         
         # Linear layers to transform inputs for attention
         
         # Multi-head attention layer
-        self.mha = MultiHeadAttention(self.dmodel, self.heads)
+        self.mha = MultiHeadAttention(config)
         
         # Separate LayerNorm instances for attention and feed-forward parts
         self.norm1 = nn.LayerNorm(self.dmodel)  # For attention submodule
         self.norm2 = nn.LayerNorm(self.dmodel)  # For feed-forward submodule
-        self.norm = nn.LayerNorm(self.dmodel)
         
         # Feed-forward layer
-        self.ff = FeedForwardLayer(2048, self.dmodel)
+        self.ff = FeedForwardLayer(config)
         
         # Dropout for regularization
-        self.dropout1 = nn.Dropout(p=0.1)
-        self.dropout2 = nn.Dropout(p=0.1)
+        self.dropout1 = nn.Dropout(p=self.dropout_prob)
+        self.dropout2 = nn.Dropout(p=self.dropout_prob)
 
-    def forward(self, x, src_mask):
+    def forward(self, trg_batch, src_mask):
         """Forward pass through a specific encoder layer."""
         #Encoder Block 1
-        trb = self.norm(x)
-        out_encoder = x + self.dropout1(self.mha(trb,trb,trb,mask=src_mask))
-        #Encoder Block 2 
+        trb = self.norm1(trg_batch)
+        out_encoder = trg_batch + self.dropout1(self.mha(trb,trb,trb,mask=src_mask))
+        #Encoder Block 2
         output = out_encoder + self.dropout2(self.ff(self.norm2(out_encoder)))
         return output
 

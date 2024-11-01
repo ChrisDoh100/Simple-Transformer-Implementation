@@ -3,19 +3,19 @@ from Embeddings import Embeddings
 from PositionalEncoding import PositionalEncodings
 from Decoder import LayerDecoder,Decoder
 from Encoder import LayerEncoder,Encoder
-from DecoderOutputGen import DecoderOutputGenerator
+from OutputLayer import DecoderOutputGenerator
 
 
 class Transformer(nn.Module):
-    def __init__(self,config,vocab_size):
+    def __init__(self,config):
         super().__init__()
-        self.embed = Embeddings(vocab_size,config['model_dimension'])
-        self.pos_embed = PositionalEncodings(config['model_dimension'])
-        encoderlayer = LayerEncoder(heads=config['heads'],dmodel=config['model_dimension'])
-        decoderlayer = LayerDecoder(heads=config['heads'],dmodel=config['model_dimension'])
+        self.embed = Embeddings(config)
+        self.pos_embed = PositionalEncodings(config=config)
+        encoderlayer = LayerEncoder(config)
+        decoderlayer = LayerDecoder(config)
         self.encoder = Encoder(config['encoderlayers'],encoderlayer)
         self.decoder= Decoder(config['decoderlayers'],decoderlayer)
-        self.decodergenerator = DecoderOutputGenerator(config['model_dimension'],vocab_size=vocab_size)
+        self.decodergenerator = DecoderOutputGenerator(config)
         self.decodergenerator.lin.weight = self.embed.embed.weight
         self.init_params()
     

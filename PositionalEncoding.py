@@ -9,11 +9,12 @@ from torch import nn
 class PositionalEncodings(nn.Module):
     """Positional encodings that is added to the initial encodings
         and passed the the encoder/decoder."""
-    def __init__(self,model_dim=512,sequence_length=5000):
+    def __init__(self,config,sequence_length=5000):
         super().__init__()
         self.max_sec_len = sequence_length
-        self.model_dimension=model_dim
-        self.dropout = nn.Dropout(p=0.0)
+        self.model_dimension=config['model_dimension']
+        self.dropout_prob=config['dropout_prob']
+        self.dropout = nn.Dropout(p=self.dropout_prob)
         #math for encodings
         positions = torch.arange(0,self.max_sec_len).unsqueeze(1)
         freq = torch.pow(10000.,-torch.arange(0,self.model_dimension,2,dtype=torch.float)/self.model_dimension)
