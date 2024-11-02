@@ -24,7 +24,7 @@ this is it.
 
 - I trained this on a GTX 3060 which has 12GB of VRAM so if you want to train the model yourself you might need to adjust the token size, if
   
-    you have less or more if you have more etc.
+    you have less lower the token amount or if you have more increase the token amount etc.
 
 - Each Epoch took around 7-8 minutes, so for 20 or so epochs you're looking at around 2-3 hours to train the entire model on the iwslt dataset.
   
@@ -49,7 +49,6 @@ this is it.
     be meaningfully trained on it.
 
 ## Results
- | Dataset | Eval |
  |IWSLT 2017 Train|IWSLT Val|
  |-----|-----|
  |EN-FR|23.00 Bleu
