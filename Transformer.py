@@ -7,6 +7,7 @@ from OutputLayer import DecoderOutputGenerator
 
 
 class Transformer(nn.Module):
+    """Transformer Based on Attention is all you need."""
     def __init__(self,config):
         super().__init__()
         self.embed = Embeddings(config)

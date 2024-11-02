@@ -16,6 +16,7 @@ sp=spm.SentencePieceProcessor()
 
 @torch.no_grad
 def greedy_decoding(model, src_sentence_batch, max_len,config):
+    """Greedy Decoding for the transformer."""
     device = config['device']
     model.to(config['device'])
     model.eval()
@@ -26,7 +27,9 @@ def greedy_decoding(model, src_sentence_batch, max_len,config):
     # Initialize the target sentence with the start token
     trg_sentence_batch = torch.full((batch_size, 1), sp.bos_id(), device=device)  # Shape: [batch_size, 1]
     is_decoded = [False] * src_sentence_batch.shape[0]
+    #Get Source Mask
     src_mask = get_source_mask(src_sentence_batch, sp.pad_id()).to(device)
+    #Get encoding Embeddings so we dont have to run this part of the transformer every time.
     src_sentence_batch = model.encode(src_sentence_batch,src_mask)
     while True:
         # Generate source mask and target mask dynamically
@@ -38,14 +41,16 @@ def greedy_decoding(model, src_sentence_batch, max_len,config):
             output1 = model.decode(trg_sentence_batch,src_sentence_batch,trg_padding_mask,src_mask)
         # Get the next token (greedy decoding)
         next_token = torch.argmax(output1[length-1::length], dim=-1).unsqueeze(1)  # Shape: [batch_size, 1]
+        #Checking to see what sentences already have eos token.
         for idx in range(len(trg_sentence_batch)):
             if trg_sentence_batch[idx][-1]==sp.eos_id():
                 next_token[idx] = sp.eos_id()
                 is_decoded[idx] = True
+        #Concatenating the next token to the current batch.
         trg_sentence_batch = torch.cat((trg_sentence_batch,next_token),dim=-1)
         if all(is_decoded) or len(trg_sentence_batch[0])>max_len:
             break
-
+    #Decoding predicted sentences to return pure string sentences.
     answers = []
     for x in trg_sentence_batch:
         val = sp.DecodeIds(x.tolist())
@@ -62,8 +67,8 @@ def brevity_calculation(generated_sentence,reference_sentence_length):
 
 
 def beam_search(model,tokenized_sentence,config):
-    """Implementation of beam search that should improve over a simple greedy strategy."""
-
+    """Implementation of beam search that should improve over a greedy strategy."""
+    raise F'Not Implemented.'
     model.to(config['device'])
     sp.Load('training.model')
     actual_sentence = tokenized_sentence.to(config['device'])
@@ -71,7 +76,6 @@ def beam_search(model,tokenized_sentence,config):
     print(candidate_sentences)
     for x in range(len(actual_sentence[0])):
         new_generations=[]
-        #print("CANDIATES: ",len(candidate_sentences))
         for sentence in candidate_sentences:
             trg_sentence=sentence[0]
             if trg_sentence[-1].item()==sp.eos_id():
@@ -81,7 +85,6 @@ def beam_search(model,tokenized_sentence,config):
             trg_padding_mask = get_trg_mask(trg_sentence, sp.pad_id()).to(config['device'])
             length = len(trg_sentence)
             with torch.no_grad():
-                # Run the model: feed src_sentence and current target sequence (trg_sentence)
                 output1 = model(actual_sentence, trg_sentence, src_mask, trg_padding_mask)
             next_tokens = torch.topk(output1[length-1::length], dim=-1,k=config['beam_width'])
             print("Length: ",length)

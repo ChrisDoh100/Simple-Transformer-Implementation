@@ -3,7 +3,7 @@
 from torch import nn
 from MultiHeadAttn import MultiHeadAttention
 from FeedForward import FeedForwardLayer
-from helpers import clones
+from Helpers import clones
 
 class Encoder(nn.Module):
     """Encoder Module of the Transformer"""
@@ -32,8 +32,6 @@ class LayerEncoder(nn.Module):
         self.dmodel = config['model_dimension']
         self.dropout_prob = config['dropout_prob']
         
-        # Linear layers to transform inputs for attention
-        
         # Multi-head attention layer
         self.mha = MultiHeadAttention(config)
         
@@ -45,15 +43,18 @@ class LayerEncoder(nn.Module):
         self.ff = FeedForwardLayer(config)
         
         # Dropout for regularization
-        self.dropout1 = nn.Dropout(p=self.dropout_prob)
-        self.dropout2 = nn.Dropout(p=self.dropout_prob)
+        self.dropout1 = nn.Dropout(p=self.dropout_prob)#Multi-Head Attention Dropout
+        self.dropout2 = nn.Dropout(p=self.dropout_prob)#Feedforward Dropout
 
     def forward(self, trg_batch, src_mask):
         """Forward pass through a specific encoder layer."""
-        #Encoder Block 1
-        trb = self.norm1(trg_batch)
-        out_encoder = trg_batch + self.dropout1(self.mha(trb,trb,trb,mask=src_mask))
-        #Encoder Block 2
-        output = out_encoder + self.dropout2(self.ff(self.norm2(out_encoder)))
+        #For each sub layer we use X + sublayer(norm(x)) instead of norm(X+sublayer(x)), explained in the readme.
+        #We apply dropout to the output of each sublayer as a regularization technique but its not very important in terms of the overall architecture.
+        #Encoder Sub-Block 1
+        trb = self.norm1(trg_batch) #  = norm(x)
+        out_encoder = trg_batch + self.dropout1(self.mha(trb,trb,trb,mask=src_mask)) # = X+Multi-Head Attention(norm(x))
+        #Encoder Sub-Block 2
+        normed_out_encoder = self.norm2(out_encoder) # = norm(x)
+        output = out_encoder + self.dropout2(self.ff(normed_out_encoder))# = X+Feedforward(norm(x))
         return output
 

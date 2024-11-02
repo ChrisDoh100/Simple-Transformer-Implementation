@@ -1,10 +1,11 @@
 import argparse
 import torch
 import os
-from Transformerimp import Transformer
+from Transformer import Transformer
 import sentencepiece as spm
 from Inference import greedy_decoding,beam_search
 def translate(model,sentence_batch, decoding_method):
+    """Translates a single sentence."""
     if decoding_method=='greedy':
         print(greedy_decoding(model,sentence_batch,max_len=len(sentence_batch[0]),config=translate_config)[0])
     else:

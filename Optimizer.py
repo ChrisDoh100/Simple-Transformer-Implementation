@@ -1,6 +1,7 @@
 
 
 class LRscheduler:
+    "Learning rate scheduler."
     def __init__(self,optimizer,warmups,model_dimension):
         self.model_dim = model_dimension
         self.opt = optimizer
@@ -9,7 +10,7 @@ class LRscheduler:
 
     def step(self):
         """Takes a step in the scheduler and updates the learning rate
-            for all parameter groups."""
+            for all parameters."""
         self.current_step+=1
         lr = self.get_lr()
         for param in self.opt.param_groups:

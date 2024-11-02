@@ -4,7 +4,7 @@ import math
 
 
 class Embeddings(nn.Module):
-    """Generates the embeddings for each input sentence/matrix"""
+    """Generates the embeddings for each input sentence/matrix of size sequence_length X model_dimensionality"""
     def __init__(self,config):
         super().__init__()
         self.dim_model=config['model_dimension']

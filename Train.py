@@ -11,10 +11,12 @@ import torch.optim as opt
 from Preprocessing import collate_fn
 from DataGen import GenerateDatasets
 from Trainer import train_loop,val_loop
+from Helpers import num_params
 
 
 
 def training(training_config):
+    """Transformer training setup based on passed config."""
     #1 Get the data.
     if training_config['validation']:
         trainingset,validationset = GenerateDatasets(training_config['validation'],training_config['dataset'],training_config['source_ext'],training_config['target_ext'],training_config['vocab_size'])
@@ -31,11 +33,12 @@ def training(training_config):
         validationdataloader = DataLoader(dataset=validationset,collate_fn=collate_fn,batch_sampler=validationsampler)
     
     trainingsampler = tokenBatchSampler(dataset=trainingset,max_tokens=1500,shuffle=True)
-    label_smoothing = LabelSmoothingDistribution(smoothing_value=0.1, pad_token_id=3,trg_vocab_size=training_config['vocab_size'],device=training_config['device'])
+    label_smoothing = LabelSmoothingDistribution(smoothing_value=0.1, pad_token_id=3,vocab_size=training_config['vocab_size'],device=training_config['device'])
     trainingdataloder = DataLoader(dataset=trainingset,collate_fn=collate_fn,batch_sampler=trainingsampler)
     KVloss = nn.KLDivLoss(reduction='batchmean')
     
     #3 Execute training.
+    print("Num Params: ",num_params(Language_model))
     for epoch in range(training_config['epochs']):
         train_loop(epoch,trainingdataloder,scheduler,Language_model,label_smoothing,KVloss)
         if training_config['validation']:

@@ -38,12 +38,15 @@ class tokenBatchSampler(Sampler):
         if current_batch:
             batches.append(current_batch)
         if self.shuffle:
-            for batch in self.batches:
+            for batch in batches:
                 random.shuffle(batch)
             random.shuffle(batches)
         return batches
 
     def __iter__(self):
+        #Very important to shuffle the batches before
+        #returning an iterable, because if you don't you introduce 
+        #a strong inductive bias as you've sorted the sequences by length.
         if self.shuffle:
             for batch in self.batches:
                 random.shuffle(batch)

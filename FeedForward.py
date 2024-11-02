@@ -8,9 +8,16 @@ class FeedForwardLayer(nn.Module):
         super().__init__()
         self.dmodel = config['model_dimension']
         self.ffscale = config['feedforward_scale']
-        self.linear1 = nn.Linear(self.dmodel, self.ffscale*self.dmodel)
+        self.linear1 = nn.Linear(self.dmodel, self.ffscale*self.dmodel) # Increasing the dimensionality by some scale factor*model dimensionality
         self.linear2 = nn.Linear(self.ffscale*self.dmodel, self.dmodel)
         self.relu = nn.ReLU()
 
-    def forward(self, representations_batch):
-        return self.linear2(self.relu(self.linear1(representations_batch)))
+    def forward(self, X):
+        #FeedForward Block 1
+        # Relu(Linear(X))
+        linear_input = self.linear1(X) #=Linear(X)
+        relu_input = self.relu(linear_input)# = Relu(Linear(X))
+        #FeedForward Block 2
+        # Linear(Relu(Linear(X)))
+        output = self.linear2(relu_input)#=Linear(Relu(Linear(X))) 
+        return output

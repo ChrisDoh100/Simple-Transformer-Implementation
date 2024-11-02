@@ -2,10 +2,10 @@ import torch
 import torch.optim as opt
 from torch.utils.data import DataLoader
 from Sampler import tokenBatchSampler
-from helpers import num_params
+from Helpers import num_params
 #from Transformerimp import Transformer
 from Optimizer import LRscheduler
-from Transformerimp import Transformer
+from Transformer import Transformer
 from Preprocessing import collate_fn
 from LabelSmoothing import LabelSmoothingDistribution
 from tqdm.auto import tqdm
@@ -16,8 +16,9 @@ from nltk.translate.bleu_score import corpus_bleu
 
 
 def train_loop(epoch=None,dataloader=None,scheduler1=None,transformer1=None,label_smoothing1=None,loss1=None):
-        Training_loss=0
-        Training_batches=0
+        """Transformer training loop."""
+        training_loss=0
+        training_batches=0
         transformer1.train()
         for batch in tqdm(dataloader, total= len(dataloader), desc=f'Processing training epoch {epoch+1}...'):
             (src,src_mask),(trg_input,trg_mask),(trg_output) = batch
@@ -27,15 +28,17 @@ def train_loop(epoch=None,dataloader=None,scheduler1=None,transformer1=None,labe
                                     trg_mask=trg_mask) 
             trg_output = label_smoothing1(trg_output)
             cur_loss = loss1(results,trg_output)
-            Training_loss+=cur_loss.item()
-            Training_batches+=1
+            training_loss+=cur_loss.item()
+            training_batches+=1
             cur_loss.backward()
             scheduler1.step()
             scheduler1.zero_grad()
-        print(f'Training Loss of:{Training_loss/Training_batches} for Epoch {epoch+1}.')
+        print(f'Training Loss of:{training_loss/training_batches} for Epoch {epoch+1}.')
+        torch.cuda.empty_cache()
 
 
 def val_loop(sp,dataloader=None,transformer=None,label_smoothing=None,loss=None,training_config=None):
+    """Validation loop."""
     validation_loss=0
     validation_count=0
     sp.Load('training.Model')
@@ -56,11 +59,7 @@ def val_loop(sp,dataloader=None,transformer=None,label_smoothing=None,loss=None,
                 validation_predictions.append(sentence.split())
             for ground_sentence in val_trg_input:
                 validation_actuals.append([sp.DecodeIds(ground_sentence.tolist()).split()])
-    try:
-        b_score = corpus_bleu(validation_actuals,validation_predictions)
-    except:
-        print(f'Error Calculating Bleu Score.')
-        b_score=-1.0    
+    b_score = corpus_bleu(validation_actuals,validation_predictions)
     print(f'Validation Loss of:{validation_loss/validation_count} with Bleu Score of {b_score} Bleu.')
     torch.cuda.empty_cache()
 
