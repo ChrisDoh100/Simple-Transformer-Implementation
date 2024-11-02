@@ -1,7 +1,7 @@
 import argparse
 import torch
 from Optimizer import LRscheduler
-from Transformerimp import Transformer
+from Transformer import Transformer
 from Sampler import tokenBatchSampler
 from LabelSmoothing import LabelSmoothingDistribution
 from torch.utils.data import DataLoader
