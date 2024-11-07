@@ -66,6 +66,4 @@ Also the countless youtube videos that helped understanding on nauance aspects o
 that go beyond thr scope of just the original transformer and in to its variants like the reformer, Bert, GPT,Linformer etc.
 
 ## Blog
-I do plan on writing a blog on this project which will go much more in depth on some of the pitfalls of creating this project.
-
-I'll link it here when its ready.
+I wrote a blog on this project which goes into much more detail on some of the challenges of training this model, you can find it [here](https://medium.com/@christopherdoherty14/how-not-to-train-your-transformer-7e63011a16eb)
